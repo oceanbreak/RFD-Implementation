@@ -1,8 +1,9 @@
 """
-version 0.1.0
+version 0.1.1
 """
 
 import sys
+import Utils
 from skimage import io
 from skimage import img_as_float as imf
 from skimage.color import rgb2gray
@@ -11,6 +12,16 @@ from matplotlib import pyplot as plt
 import numpy as np
 from math import atan2, sqrt, pi
 
+class RFD:
+    def __init__(self, input_img, show_steps = False):
+        self._input_img = Utils.readImPatch(input_img)
+        self._im_height, self._im_width = self._input_img.shape
+        self._show_steps = show_steps
+
+        self._orient_quant = 8  # Number of orientations for gradient to assign
+        self._gradMap = []      # Initialize gradients array
+        for i in range(self._orient_quant + 1):
+            self._gradMap.append(np.zeros((self._im_height, self._im_width)))
 
 class RfdUtils:
     # Class that reads image and seprates it into set of gradients in 8 directions
@@ -114,3 +125,4 @@ if __name__ == "__main__":
     img_to_process = RfdUtils(sys.argv[1], True)
     img_to_process.getHoG()
     img_to_process.showGradients()
+
