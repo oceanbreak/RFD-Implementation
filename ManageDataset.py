@@ -13,7 +13,7 @@ root = Tk()
 input_file = filedialog.askopenfilename()
 root.destroy()
 img = Utils.readImPatch(input_file)
-img = Utils.cropImg(img, (0,0), (20,3))
+#img = Utils.cropImg(img, (0,0), (20,3))
 io.imshow(img)
 plt.title('Input')
 plt.show()
@@ -26,6 +26,6 @@ plt.imshow(img_integral)
 plt.colorbar()
 plt.show()
 
-#output_file = '.'.join(input_file.split('.')[:-1]) + '_integral.tif'
-#io.imsave(output_file, img_integral)
+output_file = '.'.join(input_file.split('.')[:-1]) + '_integral.tif'
+io.imsave(output_file, img_integral)
 
