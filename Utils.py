@@ -44,11 +44,11 @@ def calcRectSum(input_image, top_left_pix, bot_rght_pix, integral = False):
         x2 = bot_rght_pix[0]
         y1 = top_left_pix[1] - 1
         y2 = bot_rght_pix[1]
-        if x1<0 and y1<0:
+        if x1 < 0 & y1 < 0:
             return input_image[y2, x2]
-        elif x1>=0 and y1<0:
+        elif x1 >= 0 & y1 < 0:
             return input_image[y2, x2] - input_image[y2, x1]
-        elif x1<0 and y1>=0:
+        elif x1 < 0 & y1 >= 0:
             return input_image[y2, x2] - input_image[y1, x2]
         else:
             return input_image[y2, x2] - input_image[y1, x2] - input_image[y2, x1] + input_image[y1, x1]
