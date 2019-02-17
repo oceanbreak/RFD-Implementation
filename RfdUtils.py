@@ -28,6 +28,10 @@ class RFD:
             plt.show()
 
     def getHoG(self):
+        """
+        Calculate gradients in 8 directions of an input patch
+        :return:
+        """
         print('Calculating gradient bins ...')
         nDir = self._orient_quant
         GRAD_RADIUS = 1
@@ -79,6 +83,35 @@ class RFD:
         for i, array in enumerate(self._gradMap):
             self.show(array, str(i))
 
+    def calcRectSum(self, input_image, top_left_pix, bot_rght_pix, integral=False):
+        """
+        Calculate sum in rectangle area of given image and borders
+        :param input_image as numpy float array
+        :param top_left_pix (x,y)
+        :param bot_rght_pix (x,y)
+        :param integral: Set True if input is an integral image
+        :return: sum value
+        """
+        if integral:
+            x1 = top_left_pix[0] - 1
+            x2 = bot_rght_pix[0]
+            y1 = top_left_pix[1] - 1
+            y2 = bot_rght_pix[1]
+            if x1 < 0 & y1 < 0:
+                return input_image[y2, x2]
+            elif x1 >= 0 & y1 < 0:
+                return input_image[y2, x2] - input_image[y2, x1]
+            elif x1 < 0 & y1 >= 0:
+                return input_image[y2, x2] - input_image[y1, x2]
+            else:
+                return input_image[y2, x2] - input_image[y1, x2] - input_image[y2, x1] + input_image[y1, x1]
+
+        else:
+            sum = 0
+            for i in range(top_left_pix[1], bot_rght_pix[1]+1):
+                for j in range(top_left_pix[0], bot_rght_pix[0]+1):
+                    sum += input_image[i, j]
+            return sum
 
 
 if __name__ == "__main__":
