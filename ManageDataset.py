@@ -17,6 +17,10 @@ PATCH_SIZE = (64, 64)
 DIRECTIONS_NUM = 8
 
 def processImagesBatch():
+    """
+    Function asks user for input images (originally from Patch Dataset) and calculates gradients for specified
+    number of direction bins and stores them to .tif files.
+    """
     root = Tk()
     input_file_list = filedialog.askopenfilenames()
     root.destroy()

@@ -9,18 +9,18 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 class RFD:
-    def __init__(self, input_img, show_steps = False):
+    def __init__(self, input_img, show_steps = False, learn = False):
         self._input_img = input_img
         self._im_height, self._im_width = self._input_img.shape
         self._show_steps = show_steps
-
         self._orient_quant = 8  # Number of orientations for gradient to assign
-        self._gradMap = []      # Initialize gradients array
-        # for i in range(self._orient_quant + 1):
-        #     self._gradMap.append(np.zeros((self._im_height, self._im_width)))
 
-    def calc_descriptor(self):
-        self._gradMap = Utils.getHoG(self._input_img, self._orient_quant)
+        if not learn:
+            self._gradMap = Utils.getHoG(self._input_img, self._orient_quant)      # Initialize gradients array
+        else:
+            self._gradMap = []
+
+    def calculateDescriptor(self):
         for i, array in enumerate(self._gradMap):
             self.show(array, "Gradient dir " + str(i))
 
@@ -30,7 +30,7 @@ class RFD:
             plt.title(name)
             plt.show()
 
-    def receptiveFieldResponse(self, channel_num, top_left_pix, bot_rght_pix, threshold):
+    def receptiveFieldResponseRect(self, channel_num, top_left_pix, bot_rght_pix, threshold):
         pass
 
     def calcNormFactor(self, top_left_pix, bot_rght_pix):
@@ -43,4 +43,4 @@ if __name__ == "__main__":
     input_img = Utils.readImPatch(sys.argv[1])
     input_img = Utils.cropImg(input_img, (0,0), (64,64))
     img_to_process = RFD(input_img, True)
-    img_to_process.calc_descriptor()
+    img_to_process.calculateDescriptor()

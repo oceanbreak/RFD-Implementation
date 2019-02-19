@@ -3,7 +3,8 @@ Operations with images:
     readImPatch() - reads image and converts it to grayscale float numpy array
     cropImg() - returns cropped image numpy array
     getHoG() - returns array of gadients of input patch over specified number of directions
-    calcRectSum() - returns
+    calcRectSum() - returns sum of pixels in rectangular area, specified by top left and bottom right pixel.
+                    If parameter "integral" set to True, it assumes that input patch is an integral image.
 """
 
 import numpy as np
