@@ -2,11 +2,9 @@
 Python version of RFD algorythm.
 
 ## Required packeges:
-numpy
-
-scikit-image
-
-matplotlib
+* Numpy
+* Scikit-image
+* Matplotlib
 
 
 ## Original paper:
