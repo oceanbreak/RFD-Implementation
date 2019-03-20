@@ -45,7 +45,7 @@ def getHoG(im_patch, orient_quant=8):
     # print('Calculating gradient bins ...')
     nDir = orient_quant
     GRAD_RADIUS = 1
-    height, width = im_patch.shape
+    height, width = im_patch.shape[:2]
     sigma0 = 1.6
     smooth_patch = gaussian(im_patch, sigma0)
 
