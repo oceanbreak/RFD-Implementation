@@ -6,15 +6,16 @@ storing it to separate .tif file with name, corresponding to gradient channel nu
 
 import Utils
 from skimage.transform import integral as intg
-from tkinter import Tk
 from skimage import io
-from tkinter import filedialog
 from matplotlib import pyplot as plt
 import numpy as np
+from os import listdir
+from os.path import isfile, join
 
 PATCHES_ARRAY_SIZE = (16, 16)
 PATCH_SIZE = (64, 64)
 DIRECTIONS_NUM = 8
+DATASET_PATH = '/home/ocean/Documents/Patch/halfdome/'
 patches_in_img = PATCHES_ARRAY_SIZE[0] * PATCHES_ARRAY_SIZE[1]
 
 def patchPositionByIndex(index):
@@ -34,11 +35,16 @@ def processImagesBatch():
     Function asks user for input images (originally from Patch Dataset) and calculates gradients for specified
     number of direction bins and stores them to one .mpy file
     """
-    root = Tk()
-    input_file_list = filedialog.askopenfilenames()
-    root.destroy()
+
+    # Generate array of input files
+    input_file_list = [DATASET_PATH + f for f in listdir(DATASET_PATH) if  f.split('.')[-1]=='bmp']
+    input_file_list.sort()
+
     output_file_name = '/'.join(input_file_list[0].split('/')[:-2] + [input_file_list[0].split("/")[-2] + '_dataset_grad_integr.npy'])
+    output_file_name = input_file_list[0].split('.')[-2] + '.npy'
     print(output_file_name)
+    print(input_file_list)
+
 
     for i in range(9, 12):
         patch_config = patchPositionByIndex(i)
@@ -50,7 +56,7 @@ def processImagesBatch():
         #     plt.title(i)
         #     plt.show()
     shape_arr = (len(input_file_list) * PATCHES_ARRAY_SIZE[0] * PATCHES_ARRAY_SIZE[1],
-             *PATCH_SIZE, DIRECTIONS_NUM + 1)
+             *PATCH_SIZE, DIRECTIONS_NUM + 2)
     print(shape_arr)
     img_grad_integr_array = np.memmap('temp.dat', dtype=np.float32, mode='w+', shape=shape_arr)
     # img_grad_integr_array = np.zeros((len(input_file_list)*PATCHES_ARRAY_SIZE[0]*PATCHES_ARRAY_SIZE[1],
