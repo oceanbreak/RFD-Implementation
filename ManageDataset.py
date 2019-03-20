@@ -13,7 +13,7 @@ from os import listdir
 PATCHES_ARRAY_SIZE = (16, 16)
 PATCH_SIZE = (64, 64)
 DIRECTIONS_NUM = 8
-DATASET_PATH = '/home/ocean/Documents/Patch/halfdome/'
+DATASET_PATH = '/media/sf_Share/IPPI/Datasets/Patch/halfdome/'
 patches_in_img = PATCHES_ARRAY_SIZE[0] * PATCHES_ARRAY_SIZE[1]
 
 def patchPositionByIndex(index):
@@ -63,11 +63,13 @@ def processImagesBatch():
                 img_grad_integr_array[cur_num, :, :, i] = cur_patch
             else:
                 img_grad_integr_array[cur_num, :, :, i] = intg.integral_image(cur_patch_gradients[:,:,i-1])
+                # img_grad_integr_array[cur_num, :, :, i] = cur_patch_gradients[:,:,i-1]
         print('Calculating ... %i' % cur_num)
 
     print('Calculated temp array')
     np.save(output_file_name, img_grad_integr_array)
     print('saved as %s' % output_file_name)
+    del img_grad_integr_array
 
 
 if __name__ == '__main__':
