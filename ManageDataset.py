@@ -7,8 +7,6 @@ storing it to separate nunpy array with 10 channels, where
 
 import Utils
 from skimage.transform import integral as intg
-from skimage import io
-from matplotlib import pyplot as plt
 import numpy as np
 from os import listdir
 
