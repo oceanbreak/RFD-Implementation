@@ -5,7 +5,7 @@ storing it to separate nunpy array with 10 channels, where
 1-st one is original image, others are integral sums of gradients.
 """
 
-import sys, os, time
+import sys, os
 import Utils
 from skimage.transform import integral as intg
 import numpy as np
