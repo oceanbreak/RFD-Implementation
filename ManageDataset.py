@@ -5,18 +5,39 @@ storing it to separate nunpy array with 10 channels, where
 1-st one is original image, others are integral sums of gradients.
 """
 
+import sys, os, time
 import Utils
 from skimage.transform import integral as intg
 import numpy as np
 from os import listdir
 
+# Global variables
 PATCHES_ARRAY_SIZE = (16, 16)
 PATCH_SIZE = (64, 64)
 DIRECTIONS_NUM = 8
-DATASET_PATH = '/media/sf_Share/IPPI/Datasets/Patch/halfdome/'
+DATASET_DIRECTORIES = []
+DATASET_LENGTHS = []
 patches_in_img = PATCHES_ARRAY_SIZE[0] * PATCHES_ARRAY_SIZE[1]
 
+TEMP_FILE = '/media/ocean/DATA/temp.dat'
+OUTPUT_FILE_NAME = '/media/sf_Share/IPPI/Datasets/Patch/Patch_Dataset.npy'
+
+# Initializing work directories via locate.cfg file
+print('Initializing dataset directories:')
+with open('locate.cfg', 'r') as init_file:
+    for line in init_file:
+        DATASET_DIRECTORIES.append(line.rstrip())
+        print(line.rstrip())
+print('...')
+
+
 def patchPositionByIndex(index):
+    """
+    Reads index of an image by order and generates values for looking for an image in patches files
+    :param index:
+    :return: array: (No of pic., containing patch,
+                    row number, column number)
+    """
     pic_num = index // patches_in_img
     pic_row = (index % patches_in_img) // PATCHES_ARRAY_SIZE[0]
     pic_col = (index % patches_in_img) % PATCHES_ARRAY_SIZE[1]
@@ -28,49 +49,67 @@ def getPatch(file_list, pic_num, pic_row, pic_col):
     bot_rgt_pix = (PATCH_SIZE[0]*pic_row + PATCH_SIZE[0], PATCH_SIZE[1]*pic_col + PATCH_SIZE[1])
     return Utils.cropImg(img, top_lft_pix, bot_rgt_pix)
 
-def processImagesBatch():
+def calcArrayShape():
     """
-    Function asks user for input images (originally from Patch Dataset) and calculates gradients for specified
-    number of direction bins and stores them to one .mpy file
+    Calculating shape of total array, that will store all patches,
+    also modifies DATASET_LENGTHS for offset calculation
+    :return: aray shape (number of patches, patch height, patch width, number of channels)
     """
+    shape = [0, *PATCH_SIZE, DIRECTIONS_NUM + 2]
+    for cur_dir in DATASET_DIRECTORIES:
+        try:
+            info_file = [cur_dir + filename for filename in listdir(cur_dir) if filename.split('.')[-1]=='txt'][0]
+        except IndexError:
+            print('No info file in folder %s' % cur_dir)
+            raise(ValueError)
+        cur_patch_num = 0
+        with open(info_file, 'r') as info_data:
+            for line in info_data:
+                cur_patch_num += 1
+        shape[0] += cur_patch_num
+        DATASET_LENGTHS.append(cur_patch_num)
+    return tuple(shape)
 
-    # Generate array of input files
-    input_file_list = [DATASET_PATH + f for f in listdir(DATASET_PATH) if  f.split('.')[-1]=='bmp']
-    input_file_list.sort()
+def processDataset():
+    # Create memmap array:
+    shape_arr = calcArrayShape()
+    dataset_array = np.memmap(TEMP_FILE, dtype=np.float32, mode='w+', shape=shape_arr)
+    print('Created temporary array: %s of size %s' % (TEMP_FILE, str(shape_arr)))
 
-    # Generate array of information about patches
-    info_file = [DATASET_PATH + f for f in listdir(DATASET_PATH) if  f.split('.')[-1]=='txt'][0]
-    patches_info_list = []
+    for offset_index, cur_dir in enumerate(DATASET_DIRECTORIES):
+        print('Current directory: ' + cur_dir)
+        input_file_list = [cur_dir + f for f in listdir(cur_dir) if f.split('.')[-1] == 'bmp']
+        input_file_list.sort()
 
-    with open(info_file, 'r') as info:
-        for line in info:
-            patches_info_list.append(line.split()[0])
+        # Calculate offset of array
+        if offset_index == 0:
+            offset = 0
+        else:
+            offset += DATASET_LENGTHS[offset_index - 1]
 
-    output_file_name = '/'.join(input_file_list[0].split('/')[:-1]) + '.npy'
+        # Read patches and store into array
+        for cur_patch_num in range(DATASET_LENGTHS[offset_index]):
+            cur_patch = getPatch(input_file_list, *patchPositionByIndex(cur_patch_num))
+            cur_patch_gradients = Utils.getHoG(cur_patch)
 
-    shape_arr = (len(input_file_list) * PATCHES_ARRAY_SIZE[0] * PATCHES_ARRAY_SIZE[1],
-             *PATCH_SIZE, DIRECTIONS_NUM + 2)
+            for i in range(DIRECTIONS_NUM + 2):
+                if i == 0:
+                    dataset_array[cur_patch_num + offset, :, :, i] = cur_patch
+                else:
+                    dataset_array[cur_patch_num + offset, :, :, i] = intg.integral_image(cur_patch_gradients[:, :, i - 1])
 
-    img_grad_integr_array = np.memmap('temp.dat', dtype=np.float32, mode='w+', shape=shape_arr)
-    print('Created Temporary Array temp.dat of size ' + str(shape_arr))
-
-    for cur_num in range(len(patches_info_list)):
-        cur_patch = getPatch(input_file_list, *patchPositionByIndex(cur_num))
-        cur_patch_gradients = Utils.getHoG(cur_patch)
-
-        for i in range(DIRECTIONS_NUM + 2):
-            if i==0:
-                img_grad_integr_array[cur_num, :, :, i] = cur_patch
-            else:
-                img_grad_integr_array[cur_num, :, :, i] = intg.integral_image(cur_patch_gradients[:,:,i-1])
-                # img_grad_integr_array[cur_num, :, :, i] = cur_patch_gradients[:,:,i-1]
-        print('Calculating ... %i' % cur_num)
+            sys.stdout.write('\r' + 'Calculating %i of %i patches' % (cur_patch_num, DATASET_LENGTHS[offset_index]))
+        sys.stdout.write('\r' + 'Total of %i patches calculated\n' % DATASET_LENGTHS[offset_index])
 
     print('Calculated temp array')
-    np.save(output_file_name, img_grad_integr_array)
-    print('saved as %s' % output_file_name)
-    del img_grad_integr_array
+    np.save(OUTPUT_FILE_NAME, dataset_array)
+    print('Saved to %s' % OUTPUT_FILE_NAME)
+
+    del dataset_array
+    os.remove(TEMP_FILE)
+    print('Delete temporary array: %s' % TEMP_FILE)
+
 
 
 if __name__ == '__main__':
-    processImagesBatch()
+    processDataset()

@@ -29,13 +29,13 @@ def cropImg(input_image, top_left_pix, bot_rght_pix):
     """
     Returns cropped image
     :param input_image: input image as numpy float array
-    :param top_left_pix: y and x coordinaes of top left pixel of cropped area
-    :param bot_rght_pix: y and x coordinaes of bottom right pixel of cropped area
+    :param top_left_pix: y and x coordinates of top left pixel of cropped area
+    :param bot_rght_pix: y and x coordinates of bottom right pixel of cropped area
     """
     return input_image[ top_left_pix[0]:bot_rght_pix[0], top_left_pix[1]:bot_rght_pix[1] ]
 
 
-def getHoG(im_patch, orient_quant=8):
+def getHoG(im_patch, orient_quant= 8) -> object:
     """
     Calculate gradients in <orient_quant> directions of an input patch
     :param: im_patch - input image patch
