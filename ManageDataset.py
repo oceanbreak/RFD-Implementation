@@ -21,6 +21,7 @@ patches_in_img = PATCHES_ARRAY_SIZE[0] * PATCHES_ARRAY_SIZE[1]
 
 TEMP_FILE = '/media/ocean/DATA/temp.dat'
 OUTPUT_FILE_NAME = '/media/sf_Share/IPPI/Datasets/Patch/Patch_Dataset.npy'
+OUTPUT_INFO_FILE_NAME = '.'.join(OUTPUT_FILE_NAME.split('.')[:-1]) + '_Info_FPG.npy'
 
 # Initializing work directories via locate.cfg file
 print('Initializing dataset directories:')
@@ -109,7 +110,50 @@ def processDataset():
     os.remove(TEMP_FILE)
     print('Delete temporary array: %s' % TEMP_FILE)
 
+def processInfoFile():
+
+    info_array = []
+    # Generate array from txt info files
+    for cur_dir in DATASET_DIRECTORIES:
+        try:
+            info_file = [cur_dir + filename for filename in listdir(cur_dir) if filename.split('.')[-1]=='txt'][0]
+        except IndexError:
+            print('No info file in folder %s' % cur_dir)
+            raise(ValueError)
+
+        with open(info_file, 'r') as info_data:
+            print(info_file)
+            for line in info_data:
+                info_array.append(int(line.split()[0]))
+
+    fpg = [0]    # Initisalize array of first patch in group numbers
+    for i in range(1, len(info_array)):
+        if info_array[i] != info_array[i-1]:
+            fpg.append(i)
+    fpg.append(len(info_array))
+
+    fpg = np.array(fpg)
+    np.save(OUTPUT_INFO_FILE_NAME, fpg)
+    print('Saved Info file as ' + OUTPUT_INFO_FILE_NAME)
+
+
 
 
 if __name__ == '__main__':
-    processDataset()
+    print('Processing Patch dataset\n'
+          'Options:\n'
+          '(a) Process Images\n'
+          '(b) Process Info files\n'
+          '')
+    while True:
+        user_option = input()
+        if user_option == 'a':
+            print('PROCESS IMAGES selected')
+            processDataset()
+            break
+        elif user_option == 'b':
+            print('PRPOCESS INFO FILES selected')
+            processInfoFile()
+            break
+        else:
+            sys.stdout.write('\rWrong option. Please choose (a) or (b)\n')
