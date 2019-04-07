@@ -10,14 +10,9 @@ import numpy as np
 class RFD:
     def __init__(self, input_img, show_steps = False, learn = False):
         self._input_img = input_img
-        self._im_height, self._im_width = self._input_img.shape
         self._show_steps = show_steps
         self._orient_quant = 8  # Number of orientations for gradient to assign
         self._is_learning = learn
-
-        # DESCRIPTOR PARAMETERS (*field parameters, threshold)
-        self._rect_parameters = ( (3, (4,4), (15,15), 0.02 ),
-                                  (4, (8,8), (21,21), 0.1 ))
 
         if not self._is_learning:
             self._gradMap = Utils.getHoG(self._input_img, self._orient_quant)      # Initialize gradients array
@@ -33,12 +28,14 @@ class RFD:
             plt.title(name)
             plt.show()
 
-    def receptiveFieldResponseRect(self, channel_num, top_left_pix, bot_rght_pix, threshold):
-        cur_channel = self._gradMap[:,:,channel_num]
-        cur_channel = Utils.calcRectSum(cur_channel, top_left_pix, bot_rght_pix, True)
-        zr = self._gradMap[-1]
+    def rfResponseRect(self, channel_num, top_left_pix, bot_rght_pix, integral=False):
+        # Calculation of rectangular field response
+        cur_channel = Utils.calcRectSum(self._gradMap[:,:,channel_num], top_left_pix, bot_rght_pix, integral)
+        zr = Utils.calcRectSum(self._gradMap[:,:,-1], top_left_pix, bot_rght_pix, integral)
         return cur_channel / zr
 
+    def binarResponse(self, response, threshold):
+        return int(response > threshold)
 
 if __name__ == "__main__":
     import sys
