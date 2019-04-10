@@ -1,4 +1,5 @@
 """
+<<<<<<< Updated upstream
 This module provides searching for optimum threshold value
 for rectangular areas of RFD
 """
@@ -7,15 +8,19 @@ import numpy as np
 from RFD import RFD
 from sys import stdout
 import Utils
+from matplotlib import pyplot as plt
 
-DATASET = '/home/oceanbreak/Documents/IPPI/Datasets/Patch_Dataset_Integral.npy'
+DATASET = '/media/sf_Share/Patch_Dataset_Integral.npy'
+DATASET_INFO = '/media/sf_Share/Patch_Dataset_Info_FPG.npy'
 
-dataset = np.load(DATASET, mmap_mode='r+')
+dataset = np.load(DATASET, mmap_mode='r')
+dataset_info = np.load(DATASET_INFO)
+dataset = dataset[:1000]
 print(dataset.shape)
 
 response_set = np.zeros((dataset.shape[0], 8))
 cur_threshold = 0.1
-rectangle_param = (3, (2,2), (26,26))
+rectangle_param = (3, (0,0), (32,32))
 
 
 # def calculateRfd(i):
@@ -34,5 +39,21 @@ def calculateInterval(begin, end):
         stdout.write('\r' + 'Processing %i image of %i' % (i, end-begin))
         calculateRfd(i)
 
-calculateInterval(0, 10000)
-print(response_set[:50])
+#end = dataset.shape[0]
+end = 1000
+calculateInterval(0, end)
+
+x = np.array([i for i in range(end)])
+y = np.zeros(end)
+for i in range(y.shape[0]):
+    if i in dataset_info:
+        y[i] = 1
+
+plt.plot(x[:end], response_set[:end, 0])
+plt.plot(x[:end], y[:end])
+
+plt.show()
+
+Utils.showImage(dataset[16,:12,:12,0])
+print('\n')
+print(response_set[2, 5])

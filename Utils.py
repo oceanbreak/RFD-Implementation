@@ -122,7 +122,10 @@ def calcRectSum(input_image, top_left_pix, bot_rght_pix, integral=False):
                 sum += input_image[i, j]
         return sum
 
-
+def showImage(image, name):
+    io.imshow(image)
+    plt.title(name)
+    plt.show()
 
 
 if __name__ == '__main__':

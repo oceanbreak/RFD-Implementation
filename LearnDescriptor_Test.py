@@ -9,18 +9,21 @@ DATASET_INFO = '/media/sf_Share/Patch_Dataset_Info_FPG.npy'
 
 dataset = np.load(DATASET, mmap_mode='r')
 dataset_info = np.load(DATASET_INFO)
-# dataset = dataset[:200]
+dataset = dataset[:200000]
 im_num = 12
 im_chan = 8
 print(dataset.shape)
 # Utils.showImage(dataset[im_num,:,:,im_chan])
 
-rectangle_param = ((0,0), (50,2))  # Choose one rectangle, top left pixel and bottom right pixel
+rectangle_param = ((2,4), (32,28))  # Choose one rectangle, top left pixel and bottom right pixel
+rect_param_set = ( ((2,4), (32,26)),
+                   ((4,6), (10, 42)),
+                   ((0,0), (16,28)))
 
 # initialize array of responses for all channels and one rectangle
 # response_set = np.zeros((dataset.shape[0], 8))
 
-def manualCalcRect():
+def manualCalcRect(rectangle_param):
     print('Rectangle values:')
     pixel_values = []
     for i in range(2):
@@ -51,20 +54,42 @@ def calcArraySum():
             pixel_values[:,k] = v
             k += 1
     print('Now calculating value')
-    value = pixel_values[:,3] + pixel_values[:,0]
+    value = np.add(pixel_values[:,3], pixel_values[:,0]) - np.add(pixel_values[:,1], pixel_values[:,2])
 
-
-    # value = dataset[:, pixel_coords[3][1], pixel_coords[3][0], 1:9] + \
-            # dataset[:, pixel_coords[0][1], pixel_coords[0][0], 1:9]
-            # dataset[:, pixel_coords[1][1], pixel_coords[1][0], 1:9] - \
-            # dataset[:, pixel_coords[2][1], pixel_coords[2][0], 1:9]
     print('End of calculation')
     print('Calculated throug array size:')
     print(value.shape)
     print('Rectangle sum %f' % value[im_num])
 
-manualCalcRect()
-calcArraySum()
+def calcArraySum1(rectangle_param):
+    # pixel_values = np.zeros((dataset.shape[0], 8, 4))
+    # pixel_values = np.memmap('temp.dat', dtype=np.float32, mode='w+', shape=shape_arr)
+    rec_param = []
+    print('Assigning values')
+    for i in range(2):
+        for j in range(2):
+            x = rectangle_param[i][0]
+            y = rectangle_param[j][1]
+            rec_param.append((y,x))
+
+    value1 = dataset[:, rec_param[0][0], rec_param[0][1], 1:9]
+    value2 = dataset[:, rec_param[3][0], rec_param[3][1], 1:9]
+    value3 = dataset[:, rec_param[2][0], rec_param[2][1], 1:9]
+    value4 = dataset[:, rec_param[1][0], rec_param[1][1], 1:9]
+    print('Now calculating value')
+    value = value1 + value4 - value2 - value3
+
+
+    print('End of calculation')
+    print('Calculated throug array size:')
+    print(value.shape)
+    print('Rectangle sum %f' % value[im_num, im_chan-1])
+
+    del value, value1, value2, value3, value4
+
+for r in rect_param_set:
+    manualCalcRect(r)
+    calcArraySum1(r)
 
 
 
