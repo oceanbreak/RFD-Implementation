@@ -4,14 +4,17 @@ import numpy as np
 from sys import stdout
 from matplotlib import pyplot as plt
 
-DATASET = '/media/sf_Share/Patch_Dataset_Integral.npy'
-DATASET_INFO = '/media/sf_Share/Patch_Dataset_Info_FPG.npy'
+# DATASET = '/media/sf_Share/Patch_Dataset_Integral.npy'
+# DATASET_INFO = '/media/sf_Share/Patch_Dataset_Info_FPG.npy'
+
+DATASET = '/home/oceanbreak//Documents/IPPI/Datasets/Patch_Dataset_Integral.npy'
+DATASET_INFO = '/home/oceanbreak//Documents/IPPI/Datasets/Patch_Dataset_Info_FPG.npy'
 
 dataset = np.load(DATASET, mmap_mode='r')
 dataset_info = np.load(DATASET_INFO)
-dataset = dataset[:200000]
+dataset = dataset[:50000]
 im_num = 12
-im_chan = 8
+im_chan = 6
 print(dataset.shape)
 # Utils.showImage(dataset[im_num,:,:,im_chan])
 
@@ -37,29 +40,41 @@ def manualCalcRect(rectangle_param):
     print('Rectangle sum: %f' % rect_sum)
 
 
-def calcArraySum():
-    k = 0
+def calcArraySum(rectangle_param):
     # pixel_values = np.zeros((dataset.shape[0], 8, 4))
+    shape_arr = (dataset.shape[0], 8)
     # pixel_values = np.memmap('temp.dat', dtype=np.float32, mode='w+', shape=shape_arr)
-    pixel_values = np.zeros((dataset.shape[0], 4))
-    print(pixel_values.shape)
+    value = np.zeros(shape_arr)
+    # value = np.memmap('temp.dat', dtype=np.float32, mode='w+', shape=shape_arr)
+    # print(pixel_values.shape)
     print('Assigning values')
+    rp = []
+    k = 0
     for i in range(2):
         for j in range(2):
+            print('Iteraton %i' % k)
+
             # pixel_coords.append((rectangle_param[i][0], rectangle_param[j][1]))
             x = rectangle_param[i][0]
             y = rectangle_param[j][1]
-            v = dataset[:, y, x, im_chan]
-            print('Iteration' + str(k))
-            pixel_values[:,k] = v
-            k += 1
-    print('Now calculating value')
-    value = np.add(pixel_values[:,3], pixel_values[:,0]) - np.add(pixel_values[:,1], pixel_values[:,2])
 
+            if k==0 or k==3: sign = 1
+            else: sign = -1
+
+            rp.append((y,x))
+
+            # value = value + sign * dataset[:, y, x, 1:9]
+
+            k += 1
+    value[:,:] = dataset[:, rp[0][0], rp[0][1], 1:9] + \
+            dataset[:, rp[3][0], rp[3][1], 1:9] - \
+            dataset[:, rp[1][0], rp[1][1], 1:9] - \
+            dataset[:, rp[2][0], rp[2][1], 1:9]
     print('End of calculation')
     print('Calculated throug array size:')
     print(value.shape)
-    print('Rectangle sum %f' % value[im_num])
+    print('Rectangle sum %f' % value[im_num, im_chan-1])
+    del value
 
 def calcArraySum1(rectangle_param):
     # pixel_values = np.zeros((dataset.shape[0], 8, 4))
@@ -73,9 +88,9 @@ def calcArraySum1(rectangle_param):
             rec_param.append((y,x))
 
     value1 = dataset[:, rec_param[0][0], rec_param[0][1], 1:9]
-    value2 = dataset[:, rec_param[3][0], rec_param[3][1], 1:9]
+    value2 = dataset[:, rec_param[1][0], rec_param[1][1], 1:9]
     value3 = dataset[:, rec_param[2][0], rec_param[2][1], 1:9]
-    value4 = dataset[:, rec_param[1][0], rec_param[1][1], 1:9]
+    value4 = dataset[:, rec_param[3][0], rec_param[3][1], 1:9]
     print('Now calculating value')
     value = value1 + value4 - value2 - value3
 
@@ -89,7 +104,7 @@ def calcArraySum1(rectangle_param):
 
 for r in rect_param_set:
     manualCalcRect(r)
-    calcArraySum1(r)
+    calcArraySum(r)
 
 
 
