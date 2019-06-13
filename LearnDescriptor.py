@@ -9,6 +9,7 @@ import psutil
 from RectangleCalculation import candidateRects
 from sys import stdout
 import struct
+from multiprocessing import Process, Queue
 
 # Initializing dataset array, fpg, and rectangle list
 DATASET = '/home/oceanbreak//Documents/IPPI/Datasets/Patch_Dataset_Integral.npy'
@@ -22,7 +23,7 @@ threshold_set = np.empty([len(rectangle_set), 8], dtype='float32')
 print('Loaded rectangle set of length %s' % len(rectangle_set))
 print('Loaded dataset of shape %s' % str(dataset_raw.shape))
 
-rect_set_slice = 150
+rect_set_slice = 99
 dataset_slice = 5000
 
 # Temrporary arrays for storing calculated responses and input dataset sliced into parts
@@ -36,6 +37,7 @@ def binarResponses(input_array, threshold):
     Binarizing responses, where input array is array of responses for some area
     """
     return input_array > threshold
+
 
 def calcOnesZeros(input_array, fpg):
     """
@@ -53,6 +55,7 @@ def calcOnesZeros(input_array, fpg):
         ones_zeros.append( (ones, zeros) )
     return tuple(ones_zeros)
 
+
 def calcTP(ones_zeros):
     """
     True Positive rate calculation for current response set
@@ -65,6 +68,7 @@ def calcTP(ones_zeros):
         tp_up += x*(x-1) + y*(y-1)
         tp_down += (x+y)*(x+y-1)
     return tp_up / tp_down
+
 
 def calcTN(ones_zeros):
     """
@@ -84,11 +88,13 @@ def calcTN(ones_zeros):
         tn_down += (xsum+ysum-x-y)*(x+y)
     return tn_up / tn_down
 
+
 def writeThresholdValue(filename, ytop, xtop, ybot, xbot, channel, threshold):
     with open(filename, 'a+b') as binary_file:
         entry = struct.pack('<HHHHHf', ytop, xtop, ybot, xbot, channel, threshold)
         binary_file.write(entry)
         binary_file.flush()
+
 
 def calcRectResponse(dataset, dsbegin, dsend, ytop, xtop, ybot, xbot, rect_index, rect_response):
     """
@@ -106,6 +112,36 @@ def calcRectResponse(dataset, dsbegin, dsend, ytop, xtop, ybot, xbot, rect_index
             dataset[:(dsend-dsbegin), ybot, xbot, :-1] -
             dataset[:(dsend-dsbegin), ybot, xtop, :-1] -
             dataset[:(dsend-dsbegin), ytop, xbot, :-1]) / zd[None, :(dsend-dsbegin), None]
+
+
+def searchOptimaThreshold(q, response_array, rect_index_start, rect_index_end, output_file):
+    for rect_index in range(rect_index_start, rect_index_end):
+        stdout.write('\nCalculating rectangles %s to %s' % (rect_index_start, rect_index_end))
+        for chan_index in range(response_array.shape[2]):
+            # Initialiaze binary search
+            delta = 0.25
+            threshold_middle = 0.5
+            bin_resp = binarResponses(response_array[rect_index, :, chan_index], threshold_middle)
+            ones_zeros = calcOnesZeros(bin_resp, dataset_info)
+            accur_max = 0.5 * calcTP(ones_zeros) + 0.5 * calcTN(ones_zeros)
+            optima_threshold = threshold_middle
+            while delta > 0.004:
+                threshold_left, threshold_right = threshold_middle - delta, threshold_middle + delta
+                for cur_threshold in (threshold_left, threshold_right):
+                    stdout.write('\rCalculating %s rectangle %s channel: threshold %s ' %
+                                 (rect_index, chan_index, cur_threshold))
+                    bin_resp = binarResponses(response_array[rect_index, :, chan_index], cur_threshold)
+                    ones_zeros = calcOnesZeros(bin_resp, dataset_info)
+                    cur_accuracy = 0.5 * calcTP(ones_zeros) + 0.5 * calcTN(ones_zeros)
+                    if cur_accuracy > accur_max:
+                        accur_max = cur_accuracy
+                        optima_threshold = cur_threshold
+                threshold_middle = optima_threshold
+                delta = delta / 2
+            stdout.write('\r\n ')
+            writeThresholdValue(output_file, *rectangle_set[rect_index], chan_index, optima_threshold)
+        q.put(True)
+    q.put(False)
 
 
 if __name__ == '__main__':
@@ -132,32 +168,17 @@ if __name__ == '__main__':
                 calcRectResponse(temp_dataset_array, begin_set, end_set, *rectangle_set[rect_index],
                                  rect_index%rect_set_slice, temp_response_array)
 
-        for rect_index in range(temp_response_array.shape[0]):
-            print()
-            for chan_index in range(temp_response_array.shape[2]):
-                # Initialiaze binary search
-                delta = 0.25
-                threshold_middle = 0.5
-                bin_resp = binarResponses(temp_response_array[rect_index, :, chan_index], threshold_middle)
-                ones_zeros = calcOnesZeros(bin_resp, dataset_info)
-                accur_max = 0.5 * calcTP(ones_zeros) + 0.5 * calcTN(ones_zeros)
-                optima_threshold = threshold_middle
+        proc = [None]*3
+        queue = Queue()
+        for index in range(3):
+            start = index*33
+            end = (index+1)*33
+            filename = 'Thresh_Learned_' + str(index)
+            proc[index] = Process(target=searchOptimaThreshold, args=(queue, temp_response_array, start, end, filename))
+            proc[index].start()
+            print('\nProcess %s started\n' % index)
 
-                while delta > 0.004:
-                    threshold_left, threshold_right = threshold_middle - delta, threshold_middle + delta
-                    for cur_threshold in (threshold_left, threshold_right):
-                        stdout.write('\rCalculating %s rectangle %s channel: threshold %s ' %
-                                     (rect_index, chan_index, cur_threshold))
-                        bin_resp = binarResponses(temp_response_array[rect_index, :, chan_index], cur_threshold)
-                        ones_zeros = calcOnesZeros(bin_resp, dataset_info)
-                        cur_accuracy = 0.5*calcTP(ones_zeros) + 0.5*calcTN(ones_zeros)
-                        if cur_accuracy > accur_max:
-                            accur_max = cur_accuracy
-                            optima_threshold = cur_threshold
-                    threshold_middle = optima_threshold
-                    delta = delta/2
-
-                writeThresholdValue('Thresholds_Learned', *rectangle_set[rect_index], chan_index, optima_threshold)
-
-
-
+        result = True
+        while result:
+            for pr in proc:
+                result = queue.get()
