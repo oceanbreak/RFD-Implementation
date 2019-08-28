@@ -104,22 +104,17 @@ def processDataset():
             sys.stdout.write('\r' + 'Calculating %i of %i patches' % (cur_patch_num, DATASET_LENGTHS[offset_index]))
         sys.stdout.write('\r' + 'Total of %i patches calculated\n' % DATASET_LENGTHS[offset_index])
 
-    print('Calculated temp array')
+    stdout.write('\nCalculated temp array\n')
     # np.save(OUTPUT_FILE_NAME, dataset_array)
     # print('Saved to %s' % OUTPUT_FILE_NAME)
-    temp_dataset = np.zeros((dataset_raw.shape[0], 1, 1, 9), dtype='float32')
-    dataset_slice = 5000
+    temp_dataset = np.zeros((dataset_array.shape[0], 1, 1, 9), dtype='float32')
 
     for i in range(64):
         for j in range(64):
             current_file_name = 'PATCH_%s_%s.npy' % (i, j)
             stdout.write('Processing file "%s" \n' % current_file_name)
-            for slicer in range(dataset_raw.shape[0] // dataset_slice + 1):
-                begin = slicer * 5000
-                end = begin + dataset_slice if begin + dataset_slice < dataset_raw.shape[0] else dataset_raw.shape[0]
-                temp_dataset[begin:end, 0, 0, :] = dataset_raw[begin:end, i, j, 1:]
-                stdout.write('\rCalculating pixel (%s, %s) for patches from %s to %s of %s'
-                             % (i, j, begin, end, dataset_raw.shape[0]))
+            temp_dataset[:, 0, 0, :] = dataset_array[:, i, j, 1:]
+            stdout.write('\rCalculating pixel (%s, %s) ' % (i, j) )
             np.save(DIST + current_file_name, temp_dataset)
 
 
