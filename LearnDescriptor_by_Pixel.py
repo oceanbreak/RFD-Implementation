@@ -7,7 +7,8 @@ for rectangular areas of RFD
 import numpy as np
 from RectangleCalculation import candidateRects
 from sys import stdout
-import struct
+from matplotlib import pyplot as plt
+from random import randint
 
 # Initializing dataset array, fpg, and rectangle list
 DATASET_INFO = 'D:/Coding/IPPI/Datasets/Patch/Patch_Dataset_Info_FPG.npy'
@@ -87,40 +88,58 @@ def calcTN(ones_zeros):
     return tn_up / tn_down
 
 
-def writeThresholdValue(filename, ytop, xtop, ybot, xbot, channel, threshold):
-    with open(filename, 'a+b') as binary_file:
-        entry = struct.pack('<HHHHHf', ytop, xtop, ybot, xbot, channel, threshold)
-        binary_file.write(entry)
-        binary_file.flush()
+def AccuracyVrsThreshold(threshold_vector, input_array, fpg):
+    tp = []
+    tn = []
+    accuracy = []
+    for t in threshold_vector:
+        ones_zeros = binarResponses(input_array, t)
+        ones_zeros = calcOnesZeros(ones_zeros, fpg)
+        tp_v = calcTP(ones_zeros)
+        tn_v = calcTN(ones_zeros)
+        tp.append(tp_v)
+        tn.append(tn_v)
+        accuracy.append( 0.5*tp_v + 0.5*tn_v )
+    return np.column_stack((tp, tn, accuracy))
 
 
-def calcRectResponse(dataset, dsbegin, dsend, ytop, xtop, ybot, xbot, rect_index, rect_response):
+def plotAccuracyThreshold(rect, channel):
+    t_vector = np.arange(0, 1, 0.05)
+    responses = calcRectResponse(*rect)[:,0,0,channel]
+    a_vector = AccuracyVrsThreshold(t_vector, responses, dataset_info)
+    index_max = np.argmax(a_vector[:,2])
+    print('Rectangle (%i,%i), (%i,%i); Channel %i THRESHOLD: %f ' % (*rect, channel, t_vector[index_max]))
+    plt.plot(t_vector, a_vector[:, 0], label='TP')
+    plt.plot(t_vector, a_vector[:, 1], label='TN')
+    plt.plot(t_vector, a_vector[:, 2], label='(TP+TN)/2')
+    plt.title('Rectangle (%i,%i), (%i,%i); Channel %i' % (*rect, channel))
+    # plt.legend()
+    plt.xlabel('Threshold')
+    plt.ylabel('Rate')
+    plt.ion()
+    plt.show()
+    plt.pause(0.001)
+    # input("Press [enter] to continue.")
+
+
+def calcRectResponse(ytop, xtop, ybot, xbot):
     """
     Takes a dataset, calculates response for one specified rectangle
     and stores value in rect_response array.
     """
-    stdout.write('\rCalculating rectangle %i' % rect_index)
+    stdout.write('\rCalculating rectangle (%i, %i), (%i, %i)' % (ytop, xtop, ybot, xbot))
 
     rect0 = loadPixel(ytop, xtop)
     rect1 = loadPixel(ybot, xbot)
     rect2 = loadPixel(ybot, xtop)
     rect3 = loadPixel(ytop, xbot)
 
-    # zd = dataset[:, ytop, xtop, -1] + \
-    #         dataset[:, ybot, xbot, -1] - \
-    #         dataset[:, ybot, xtop, -1] - \
-    #         dataset[:, ytop, xbot, -1]
-
     zd = rect0[:,:,:,-1] + rect1[:,:,:,-1] - rect2[:,:,:,-1] - rect3[:,:,:,-1]
-
-    rect_response[rect_index, dsbegin:dsend, :] = (dataset[:(dsend-dsbegin), ytop, xtop, :-1] +
-            dataset[:(dsend-dsbegin), ybot, xbot, :-1] -
-            dataset[:(dsend-dsbegin), ybot, xtop, :-1] -
-            dataset[:(dsend-dsbegin), ytop, xbot, :-1]) / zd[None, :(dsend-dsbegin), None]
+    return np.nan_to_num(np.divide(rect0[:,:,:,:-1] + rect1[:,:,:,:-1] - rect2[:,:,:,:-1] - rect3[:,:,:,:-1],
+                                   zd[:, :, None]) )
 
 
-def searchOptimaThreshold(q, response_array, begin_rect, chan_index, output_file):
-    q.put(True)
+def searchOptimalThreshold(response_array, begin_rect, chan_index, output_file):
     # stdout.write('\nCalculating rectangles for channel %s \n' % chan_index)
 
     for rect_index in range(response_array.shape[0]):
@@ -147,7 +166,7 @@ def searchOptimaThreshold(q, response_array, begin_rect, chan_index, output_file
         stdout.write('Threshold calculated for rectangle (%s, %s, %s, %s) channel %s is %s \n ' %
                      (*rectangle_set[begin_rect + rect_index], chan_index, optima_threshold))
         writeThresholdValue(output_file, *rectangle_set[begin_rect + rect_index], chan_index, optima_threshold)
-    q.put(False)
+
 
 
 if __name__ == '__main__':
@@ -156,6 +175,9 @@ if __name__ == '__main__':
     and calculating responses, then TP and TN rate for each rectangle,
     then storing into threshold_set array.
     """
-    for x in range(3):
-        for y in range(4):
-            loadPixel(x, y)
+    for i in range(50):
+        x = randint(0, len(rectangle_set)-1)
+        channel = randint(0,7)
+        cur_rect = rectangle_set[x]
+        plotAccuracyThreshold(cur_rect, channel)
+    input('press any key to quit')
